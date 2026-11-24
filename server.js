@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const express = require("express");
@@ -209,7 +208,10 @@ app.post("/api/pairing/create", async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, error: "PAIR_CREATE_FAILED" });
+        res.status(500).json({
+            success: false,
+            error: "PAIR_CREATE_FAILED"
+        });
     }
 });
 
@@ -267,7 +269,10 @@ app.post("/api/pairing/claim", (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, error: "PAIR_FAILED" });
+        res.status(500).json({
+            success: false,
+            error: "PAIR_FAILED"
+        });
     }
 });
 
@@ -570,6 +575,7 @@ app.delete("/api/pairing", authenticate(), (req, res) => {
 
     for (const item of files) {
         const file = getFile(item.filename);
+
         if (file && fs.existsSync(file)) {
             fs.unlinkSync(file);
         }
@@ -608,6 +614,17 @@ app.use((error, req, res, next) => {
     res.status(500).json({
         success: false,
         error: "INTERNAL_SERVER_ERROR"
+    });
+});
+
+// HEALTH CHECK
+
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        ok: true,
+        service: "AFKWatch",
+        status: "online",
+        timestamp: new Date().toISOString()
     });
 });
 

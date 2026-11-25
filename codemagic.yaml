@@ -1,65 +1,45 @@
 
-name: Build Unsigned IPA
+workflows:
+  botremote-ios:
+    name: Bot Remote iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
 
-on:
-  workflow_dispatch:
-  push:
-    paths:
-      - "ios/**"
-      - ".github/workflows/unsigned-ipa.yml"
+    environment:
+      xcode: latest
+      vars:
+        BUNDLE_ID: com.botremote.app
+        APP_NAME: BotRemote
 
-jobs:
-  build:
-    runs-on: macos-15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install XcodeGen
-        run: brew install xcodegen
-
+    scripts:
       - name: Generate Xcode project
-        working-directory: ios
-        run: xcodegen generate
+        script: |
+          brew install xcodegen
+          cd ios
+          xcodegen generate
 
-      - name: Resolve dependencies
-        working-directory: ios
-        run: |
-          xcodebuild -resolvePackageDependencies \
-            -project BotRemote.xcodeproj \
-            -scheme BotRemote
-
-      - name: Build unsigned app
-        working-directory: ios
-        run: |
+      - name: Build unsigned IPA
+        script: |
+          cd ios
           xcodebuild \
             -project BotRemote.xcodeproj \
             -scheme BotRemote \
             -configuration Release \
             -sdk iphoneos \
-            -destination "generic/platform=iOS" \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
 
-      - name: Package unsigned IPA
-        working-directory: ios
-        run: |
-          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+      - name: Package IPA
+        script: |
+          APP_PATH="ios/build/Build/Products/Release-iphoneos/BotRemote.app"
+          mkdir -p "$CM_BUILD_DIR/Payload"
+          cp -R "$APP_PATH" "$CM_BUILD_DIR/Payload/"
+          cd "$CM_BUILD_DIR"
+          zip -r BotRemote-unsigned.ipa Payload
 
-          cp -R \
-            build/Build/Products/Release-iphoneos/BotRemote.app \
-            "$RUNNER_TEMP/ipa/Payload/"
-
-          cd "$RUNNER_TEMP/ipa"
-          zip -qry "$GITHUB_WORKSPACE/BotRemote-unsigned.ipa" Payload
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: BotRemote-Unsigned-IPA
-          path: BotRemote-unsigned.ipa
-          if-no-files-found: error
-          retention-days: 14
+    artifacts:
+      - BotRemote-unsigned.ipa
+      - ios/build/Build/Products/Release-iphoneos/*.app

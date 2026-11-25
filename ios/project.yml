@@ -42,11 +42,12 @@ targets:
       properties:
         CFBundleDisplayName: Bot Remote
         UILaunchScreen: {}
-        UIUserInterfaceStyle: Dark
+        UIUserInterfaceStyle: Light
         NSSupportsLiveActivities: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: Bot Remote uses the camera to scan the pairing QR code shown on your PC.
+        NSFaceIDUsageDescription: Bot Remote uses Face ID to protect access to your bots.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
 
@@ -60,6 +61,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.botremote.app.BotRemoteLiveActivity
+        INFOPLIST_KEY_CFBundleIdentifier: com.botremote.app.BotRemoteLiveActivity
         PRODUCT_NAME: BotRemoteLiveActivity
         SWIFT_VERSION: "5.0"
         IPHONEOS_DEPLOYMENT_TARGET: "16.2"
@@ -67,5 +69,5 @@ targets:
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundlePackageType: XPC!
+        INFOPLIST_KEY_CFBundlePackageType: "XPC!"
         INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension

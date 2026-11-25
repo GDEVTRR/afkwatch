@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import UIKit
+import ActivityKit
 import SocketIO
 
 /// Single source of truth: owns the ONE Socket.IO connection and all state shown in the UI.
@@ -26,10 +27,12 @@ final class RemoteStore: ObservableObject {
     private var socket: SocketIOClient?
     private var wantConnected = false
     private var retryTask: Task<Void, Never>?
+    private var liveActivity: Activity<BotRemoteActivityAttributes>?
 
     init() {
         serverURL = UserDefaults.standard.string(forKey: Self.urlKey) ?? ""
         connection = isPaired ? .disconnected : .notPaired
+        Task { await updateLiveActivity() }
     }
 
     // MARK: - Connection lifecycle
@@ -101,6 +104,7 @@ final class RemoteStore: ObservableObject {
             serverURL = origin.absoluteString
             UserDefaults.standard.set(serverURL, forKey: Self.urlKey)
             connect()
+            await updateLiveActivity()
         } catch {
             report(error)
         }
@@ -132,6 +136,7 @@ final class RemoteStore: ObservableObject {
         KeychainStore.remove("phoneId")
         bots = []; logs = [:]
         connection = .notPaired
+        Task { await updateLiveActivity() }
     }
 
     func saveServerURL(_ raw: String) {
@@ -166,16 +171,18 @@ final class RemoteStore: ObservableObject {
         }
         listen(Event.presence) { [weak self] obj in
             guard let d = obj as? [String: Any] else { return }
-            if let online = d["desktopOnline"] as? Bool { self?.desktopOnline = online }
+            if let online = d["desktopOnline"] as? Bool { self?.desktopOnline = online; Task { await self?.updateLiveActivity() } }
         }
         listen(Event.snapshot) { [weak self] obj in
             guard let snap: Snapshot = Self.decode(obj) else { return }
             self?.bots = snap.bots
             self?.maxActive = snap.maxActive
+            Task { await self?.updateLiveActivity() }
         }
         listen(Event.status) { [weak self] obj in
             guard let upd: StatusUpdate = Self.decode(obj), let self else { return }
             if let i = self.bots.firstIndex(where: { $0.id == upd.bot.id }) { self.bots[i] = upd.bot } else { self.bots.append(upd.bot) }
+            Task { await self.updateLiveActivity() }
         }
         let onLog: @MainActor (Any?) -> Void = { [weak self] obj in
             guard let ev: LogEvent = Self.decode(obj) else { return }
@@ -270,12 +277,46 @@ final class RemoteStore: ObservableObject {
     func refresh() async {
         do {
             let res = try await send(["action": "snapshot"])
-            if let snap: Snapshot = Self.decode(res) { bots = snap.bots; maxActive = snap.maxActive }
+            if let snap: Snapshot = Self.decode(res) { bots = snap.bots; maxActive = snap.maxActive; await updateLiveActivity() }
         } catch { report(error) }
     }
 
     /// Clears only what is displayed on this phone.
     func clearLogs(_ botId: String) { logs[botId] = [] }
+
+    // MARK: - Live Activity
+
+    func updateLiveActivity() async {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard isPaired else {
+            if let activity = liveActivity { await activity.end(nil, dismissalPolicy: .immediate); liveActivity = nil }
+            return
+        }
+        let state = BotRemoteActivityAttributes.ContentState(
+            activeBots: activeCount,
+            totalBots: bots.count,
+            pcOnline: desktopOnline,
+            updatedAt: Date()
+        )
+        if let activity = liveActivity {
+            await activity.update(ActivityContent(state: state, staleDate: Date().addingTimeInterval(900)))
+        } else if Activity<BotRemoteActivityAttributes>.activities.isEmpty {
+            do {
+                liveActivity = try Activity.request(
+                    attributes: BotRemoteActivityAttributes(deviceName: UIDevice.current.name),
+                    content: ActivityContent(state: state, staleDate: Date().addingTimeInterval(900)),
+                    pushType: nil
+                )
+            } catch {
+                // Live Activities are optional; the main app remains fully functional.
+            }
+        } else {
+            liveActivity = Activity<BotRemoteActivityAttributes>.activities.first
+            if let activity = liveActivity {
+                await activity.update(ActivityContent(state: state, staleDate: Date().addingTimeInterval(900)))
+            }
+        }
+    }
 
     func report(_ error: Error) {
         errorMessage = (error as? RemoteError)?.message ?? error.localizedDescription

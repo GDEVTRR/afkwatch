@@ -19,7 +19,7 @@ struct BotDetailView: View {
                             row("Auth", bot.auth == "microsoft" ? "Microsoft" : "Offline")
                             row("Version", bot.serverVersion.isEmpty ? (bot.version.isEmpty ? "Auto" : bot.version) : bot.serverVersion)
                             HStack {
-                                Text("Uptime").foregroundColor(Theme.muted)
+                                Text("Çalışma süresi").foregroundColor(Theme.muted)
                                 Spacer()
                                 UptimeText(since: bot.connectedDate)
                             }
@@ -31,13 +31,13 @@ struct BotDetailView: View {
 
                         HStack(spacing: 12) {
                             Button { Task { await store.startBot(bot.id) } } label: {
-                                Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
+                                Label("Başlat", systemImage: "play.fill").frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(bot.isActive || !canControl)
 
                             Button(role: .destructive) { Task { await store.stopBot(bot.id) } } label: {
-                                Label("Stop", systemImage: "stop.fill").frame(maxWidth: .infinity)
+                                Label("Durdur", systemImage: "stop.fill").frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)
                             .disabled(!bot.isActive || !canControl)
@@ -47,7 +47,7 @@ struct BotDetailView: View {
                         NavigationLink {
                             ConsoleView(botId: bot.id)
                         } label: {
-                            HStack { Label("Open console", systemImage: "terminal"); Spacer(); Image(systemName: "chevron.right") }
+                            HStack { Label("Konsolu aç", systemImage: "terminal"); Spacer(); Image(systemName: "chevron.right") }
                                 .card()
                         }
                         .buttonStyle(.plain)
@@ -57,7 +57,7 @@ struct BotDetailView: View {
                 .navigationTitle(bot.name)
                 .navigationBarTitleDisplayMode(.inline)
             } else {
-                EmptyState(icon: "questionmark.circle", title: "Bot not found", text: "It may have been removed on the PC.")
+                EmptyState(icon: "questionmark.circle", title: "Bot bulunamadı", text: "Bilgisayardan kaldırılmış olabilir.")
             }
         }
     }

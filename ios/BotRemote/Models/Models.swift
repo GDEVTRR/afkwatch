@@ -87,10 +87,10 @@ enum ConnectionState: Equatable {
     case notPaired, connecting, connected, disconnected
     var label: String {
         switch self {
-        case .notPaired: return "Not paired"
-        case .connecting: return "Connecting…"
-        case .connected: return "Connected"
-        case .disconnected: return "Disconnected"
+        case .notPaired: return "Eşleştirilmedi"
+        case .connecting: return "Bağlanıyor…"
+        case .connected: return "Bağlı"
+        case .disconnected: return "Bağlantı kesildi"
         }
     }
 }

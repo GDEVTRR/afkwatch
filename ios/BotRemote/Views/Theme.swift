@@ -34,9 +34,18 @@ struct CardStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(14)
-            .background(Theme.card)
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .background {
+                if #available(iOS 26.0, *) {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(.clear)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+                } else {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Theme.card)
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
@@ -47,7 +56,7 @@ extension View {
 struct StatusPill: View {
     let status: BotStatus
     var body: some View {
-        Text(status.rawValue.capitalized)
+        Text(status == .online ? "Çevrimiçi" : status == .connecting ? "Bağlanıyor" : status == .reconnecting ? "Yeniden bağlanıyor" : "Durduruldu")
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 9).padding(.vertical, 3)
             .foregroundColor(Theme.color(for: status))

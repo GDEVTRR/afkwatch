@@ -4,7 +4,7 @@ name: BotRemote
 options:
   bundleIdPrefix: com.botremote
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "16.2"
 packages:
   SocketIO:
     url: https://github.com/socketio/socket.io-client-swift
@@ -19,6 +19,8 @@ targets:
           - Info.plist
     dependencies:
       - package: SocketIO
+      - target: BotRemoteLiveActivity
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.botremote.app
@@ -34,8 +36,25 @@ targets:
         CFBundleDisplayName: Bot Remote
         UILaunchScreen: {}
         UIUserInterfaceStyle: Dark
+        NSSupportsLiveActivities: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: Bot Remote uses the camera to scan the pairing QR code shown on your PC.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+
+  BotRemoteLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BotRemoteLiveActivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.botremote.app.liveactivity
+        PRODUCT_NAME: BotRemoteLiveActivity
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.2"
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension

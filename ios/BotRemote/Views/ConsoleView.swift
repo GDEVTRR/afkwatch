@@ -47,11 +47,11 @@ struct ConsoleView: View {
             .background(Theme.background)
         }
         .background(Theme.background)
-        .navigationTitle(bot?.name ?? "Console")
+        .navigationTitle(bot?.name ?? "Konsol")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Clear") { store.clearLogs(botId) }
+                Button("Temizle") { store.clearLogs(botId) }
             }
         }
         .task { await store.loadLogs(botId) }
@@ -104,7 +104,7 @@ struct ConsoleTabView: View {
             ZStack {
                 Theme.background.ignoresSafeArea()
                 if store.bots.isEmpty {
-                    EmptyState(icon: "terminal", title: "No bots", text: "Pair your PC and add a bot in the desktop app.")
+                    EmptyState(icon: "terminal", title: "Bot yok", text: "Bilgisayarını eşleştir ve masaüstü uygulamasından bot ekle.")
                 } else {
                     VStack(spacing: 0) {
                         Picker("Bot", selection: Binding(
@@ -121,7 +121,7 @@ struct ConsoleTabView: View {
                     }
                 }
             }
-            .navigationTitle("Console")
+            .navigationTitle("Konsol")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

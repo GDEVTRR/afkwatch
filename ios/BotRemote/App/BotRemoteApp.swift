@@ -14,7 +14,7 @@ struct BotRemoteApp: App {
                 .onAppear { store.connect() }
                 .onChange(of: scenePhase) { phase in
                     // Keep the single socket alive across foreground/background transitions.
-                    if phase == .active { store.connect(); store.reconnectIfNeeded() }
+                    if phase == .active { store.connect(); store.reconnectIfNeeded(); Task { await store.updateLiveActivity() } }
                 }
         }
     }

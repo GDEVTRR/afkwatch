@@ -8,15 +8,15 @@ struct DashboardView: View {
             ZStack {
                 Theme.background.ignoresSafeArea()
                 if !store.isPaired {
-                    EmptyState(icon: "qrcode.viewfinder", title: "Pair your PC",
-                               text: "Open Settings and scan the QR code shown in the Bot Remote desktop app.")
+                    EmptyState(icon: "qrcode.viewfinder", title: "Bilgisayarını eşleştir",
+                               text: "Ayarlar bölümünden bilgisayar uygulamasında gösterilen QR kodu okut.")
                 } else {
                     ScrollView {
                         VStack(spacing: 14) {
                             summaryCard
                             if store.bots.isEmpty {
-                                EmptyState(icon: "cpu", title: "No bots yet",
-                                           text: store.desktopOnline ? "Add a bot in the desktop app." : "Your PC is offline.")
+                                EmptyState(icon: "cpu", title: "Henüz bot yok",
+                                           text: store.desktopOnline ? "Masaüstü uygulamasından bot ekle." : "Bilgisayarın çevrimdışı.")
                                     .frame(height: 220)
                             } else {
                                 ForEach(store.bots) { bot in
@@ -30,14 +30,14 @@ struct DashboardView: View {
                     .refreshable { await store.refresh() }
                 }
             }
-            .navigationTitle("Dashboard")
+            .navigationTitle("Botlar")
             .navigationDestination(for: String.self) { id in BotDetailView(botId: id) }
             .toolbar {
                 if store.isPaired {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Menu {
-                            Button { Task { await store.startAll() } } label: { Label("Start all", systemImage: "play.fill") }
-                            Button(role: .destructive) { Task { await store.stopAll() } } label: { Label("Stop all", systemImage: "stop.fill") }
+                            Button { Task { await store.startAll() } } label: { Label("Tümünü başlat", systemImage: "play.fill") }
+                            Button(role: .destructive) { Task { await store.stopAll() } } label: { Label("Tümünü durdur", systemImage: "stop.fill") }
                         } label: { Image(systemName: "ellipsis.circle") }
                         .disabled(!store.desktopOnline || store.connection != .connected)
                     }
@@ -50,13 +50,13 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Circle().fill(store.desktopOnline ? Theme.ok : Theme.err).frame(width: 10, height: 10)
-                Text(store.desktopOnline ? "PC online" : "PC offline").font(.headline)
+                Text(store.desktopOnline ? "Bilgisayar çevrimiçi" : "Bilgisayar çevrimdışı").font(.headline)
                 Spacer()
                 Text(store.connection.label).font(.caption).foregroundColor(Theme.muted)
             }
             HStack(alignment: .firstTextBaseline) {
                 Text("\(store.activeCount)").font(.system(size: 40, weight: .bold, design: .rounded)).foregroundColor(Theme.cyan)
-                Text("/ \(store.maxActive) bots active").foregroundColor(Theme.muted)
+                Text("/ \(store.maxActive) bot sınırı").foregroundColor(Theme.muted)
                 Spacer()
             }
             ProgressView(value: Double(store.activeCount), total: Double(max(store.maxActive, 1))).tint(Theme.cyan)

@@ -12,24 +12,24 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Connection") {
+                Section("Bağlantı") {
                     HStack {
-                        Text("Status")
+                        Text("Durum")
                         Spacer()
                         Circle().fill(color).frame(width: 9, height: 9)
                         Text(store.connection.label).foregroundColor(Theme.muted)
                     }
                     if store.isPaired {
                         HStack {
-                            Text("PC")
+                            Text("Bilgisayar")
                             Spacer()
-                            Text(store.desktopOnline ? "Online" : "Offline")
+                            Text(store.desktopOnline ? "Çevrimiçi" : "Çevrimdışı")
                                 .foregroundColor(store.desktopOnline ? Theme.ok : Theme.err)
                         }
                     }
                 }
 
-                Section(header: Text("Cloud server"), footer: Text("Set automatically when you scan the QR code. HTTPS is required.")) {
+                Section(header: Text("Bulut sunucusu"), footer: Text("QR kodu okuttuğunda otomatik ayarlanır. HTTPS gereklidir.")) {
                     TextField("https://your-server.onrender.com", text: $urlText)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -38,32 +38,32 @@ struct SettingsView: View {
                         .onSubmit { store.saveServerURL(urlText) }
                 }
 
-                Section("Device pairing") {
+                Section("Cihaz eşleştirme") {
                     if store.isPaired {
-                        Button("Reconnect") { store.disconnectSocket(); store.connect() }
-                        Button("Disconnect this device", role: .destructive) { confirmUnpair = true }
+                        Button("Yeniden bağlan") { store.disconnectSocket(); store.connect() }
+                        Button("Bu cihazın bağlantısını kes", role: .destructive) { confirmUnpair = true }
                     } else {
-                        Button { showScanner = true } label: { Label("Scan pairing QR code", systemImage: "qrcode.viewfinder") }
-                        Button { showManual = true } label: { Label("Enter pairing text", systemImage: "keyboard") }
+                        Button { showScanner = true } label: { Label("Eşleştirme QR kodunu okut", systemImage: "qrcode.viewfinder") }
+                        Button { showManual = true } label: { Label("Eşleştirme metnini gir", systemImage: "keyboard") }
                     }
                     if store.busy { ProgressView() }
                 }
 
-                Section("About") {
-                    HStack { Text("Max bots"); Spacer(); Text("\(store.maxActive)").foregroundColor(Theme.muted) }
+                Section("Hakkında") {
+                    HStack { Text("En fazla bot"); Spacer(); Text("\(store.maxActive)").foregroundColor(Theme.muted) }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .navigationTitle("Settings")
+            .navigationTitle("Ayarlar")
             .onAppear { urlText = store.serverURL }
             .onChange(of: store.serverURL) { urlText = $0 }
             .sheet(isPresented: $showScanner) { scannerSheet }
             .sheet(isPresented: $showManual) { manualSheet }
             .alert("Pair with this server?", isPresented: Binding(
                 get: { pending != nil }, set: { if !$0 { pending = nil } })) {
-                Button("Cancel", role: .cancel) { pending = nil }
-                Button("Pair") {
+                Button("İptal", role: .cancel) { pending = nil }
+                Button("Eşleştir") {
                     if let p = pending { Task { await store.pair(with: p) } }
                     pending = nil
                 }
@@ -71,7 +71,7 @@ struct SettingsView: View {
                 Text(pending.map { "This will link your iPhone to the PC registered on:\n\($0.u)" } ?? "")
             }
             .confirmationDialog("Disconnect this device?", isPresented: $confirmUnpair, titleVisibility: .visible) {
-                Button("Disconnect", role: .destructive) { Task { await store.unpair() } }
+                Button("Bağlantıyı kes", role: .destructive) { Task { await store.unpair() } }
             } message: {
                 Text("Your PC will no longer accept commands from this iPhone until you pair again.")
             }
@@ -97,9 +97,9 @@ struct SettingsView: View {
                 Text("Point the camera at the QR code in the desktop app")
                     .font(.footnote).padding(10).background(.ultraThinMaterial).clipShape(Capsule()).padding()
             }
-            .navigationTitle("Scan QR")
+            .navigationTitle("QR kodu okut")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showScanner = false } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("İptal") { showScanner = false } } }
         }
     }
 
@@ -111,12 +111,12 @@ struct SettingsView: View {
                         .font(.system(.footnote, design: .monospaced))
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
-                Button("Continue") { showManual = false; handle(manualText); manualText = "" }
+                Button("Devam et") { showManual = false; handle(manualText); manualText = "" }
                     .disabled(manualText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .navigationTitle("Pairing text")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showManual = false } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("İptal") { showManual = false } } }
         }
     }
 

@@ -1,21 +1,12 @@
-
 {
-  "name": "afk-watch-cloud",
+  "name": "bot-remote",
   "version": "1.0.0",
   "private": true,
-  "main": "server.js",
+  "license": "MIT",
+  "description": "Bot Remote monorepo helper scripts",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
-  "dependencies": {
-    "better-sqlite3": "^12.4.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^5.1.0",
-    "helmet": "^8.1.0",
-    "multer": "^2.0.2",
-    "qrcode": "^1.5.4",
-    "socket.io": "^4.8.1"
+    "install:all": "npm --prefix cloud install && npm --prefix desktop install",
+    "check:protocol": "node scripts/check-protocol.js",
+    "test": "node scripts/check-protocol.js && npm --prefix cloud test && npm --prefix desktop test"
   }
 }

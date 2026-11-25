@@ -1,0 +1,41 @@
+# XcodeGen spec: run `brew install xcodegen && xcodegen generate` inside this folder to create BotRemote.xcodeproj.
+# (Alternative without XcodeGen is described in the README.)
+name: BotRemote
+options:
+  bundleIdPrefix: com.botremote
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  SocketIO:
+    url: https://github.com/socketio/socket.io-client-swift
+    from: 16.1.1
+targets:
+  BotRemote:
+    type: application
+    platform: iOS
+    sources:
+      - path: BotRemote
+        excludes:
+          - Info.plist
+    dependencies:
+      - package: SocketIO
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.botremote.app
+        PRODUCT_NAME: BotRemote
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: BotRemote/Info.plist
+    info:
+      path: BotRemote/Info.plist
+      properties:
+        CFBundleDisplayName: Bot Remote
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Dark
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: Bot Remote uses the camera to scan the pairing QR code shown on your PC.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true

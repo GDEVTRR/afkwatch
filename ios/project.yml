@@ -37,20 +37,6 @@ targets:
         INFOPLIST_FILE: BotRemote/Info.plist
         GENERATE_INFOPLIST_FILE: NO
 
-    info:
-      path: BotRemote/Info.plist
-      properties:
-        CFBundleDisplayName: Bot Remote
-        UILaunchScreen: {}
-        UIUserInterfaceStyle: Light
-        NSSupportsLiveActivities: true
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        NSCameraUsageDescription: Bot Remote uses the camera to scan the pairing QR code shown on your PC.
-        NSFaceIDUsageDescription: Bot Remote uses Face ID to protect access to your bots.
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
-
   BotRemoteLiveActivity:
     type: app-extension
     platform: iOS

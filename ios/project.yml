@@ -61,7 +61,6 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.botremote.app.BotRemoteLiveActivity
-        INFOPLIST_KEY_CFBundleIdentifier: com.botremote.app.BotRemoteLiveActivity
         PRODUCT_NAME: BotRemoteLiveActivity
         SWIFT_VERSION: "5.0"
         IPHONEOS_DEPLOYMENT_TARGET: "16.2"

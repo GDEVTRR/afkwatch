@@ -1,0 +1,72 @@
+
+name: BotRemote
+
+options:
+  bundleIdPrefix: com.botremote
+  deploymentTarget:
+    iOS: "16.2"
+
+packages:
+  SocketIO:
+    url: https://github.com/socketio/socket.io-client-swift
+    from: 16.1.1
+
+targets:
+  BotRemote:
+    type: application
+    platform: iOS
+
+    sources:
+      - path: BotRemote
+        excludes:
+          - Info.plist
+
+    dependencies:
+      - package: SocketIO
+      - target: BotRemoteLiveActivity
+        embed: true
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.botremote.app
+        PRODUCT_NAME: BotRemote
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: BotRemote/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+
+    info:
+      path: BotRemote/Info.plist
+      properties:
+        CFBundleDisplayName: Bot Remote
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Light
+        NSSupportsLiveActivities: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: Bot Remote eşleştirme QR kodunu taramak için kamerayı kullanır.
+        NSFaceIDUsageDescription: Bot Remote uygulamasının kilidini açmak için Face ID kullanılır.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+
+  BotRemoteLiveActivity:
+    type: app-extension
+    platform: iOS
+
+    sources:
+      - path: BotRemoteLiveActivity
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.botremote.app.BotRemoteLiveActivity
+        PRODUCT_NAME: BotRemoteLiveActivity
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.2"
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundlePackageType: XPC!
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension

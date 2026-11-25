@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'">
+<title>Bot Remote</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<aside id="sidebar">
+  <div class="brand"><span class="logo"></span> Bot Remote</div>
+  <div class="cap"><span id="capText">0 / 5 active</span><div class="bar"><i id="capBar"></i></div></div>
+  <div class="row gap">
+    <button id="btnStartAll" class="btn small">Start all</button>
+    <button id="btnStopAll" class="btn small ghost">Stop all</button>
+  </div>
+  <ul id="botList"></ul>
+  <button id="btnAdd" class="btn block">+ Add bot</button>
+  <button id="btnCloud" class="btn block ghost"><span id="cloudDot" class="dot"></span> Cloud &amp; pairing</button>
+</aside>
+
+<main>
+  <div id="toast" class="toast hidden"></div>
+
+  <section id="viewEmpty" class="view">
+    <h2>No bot selected</h2>
+    <p class="muted">Add a bot or pick one from the list. Up to 5 bots can run at the same time.</p>
+  </section>
+
+  <section id="viewBot" class="view hidden">
+    <header class="head">
+      <div>
+        <h2 id="botTitle"></h2>
+        <div class="muted"><span id="botBadge" class="badge"></span> <span id="botInfo"></span> <span id="botUptime"></span></div>
+      </div>
+      <div class="row gap">
+        <button id="btnStart" class="btn primary">Start</button>
+        <button id="btnStop" class="btn">Stop</button>
+        <button id="btnEdit" class="btn ghost">Edit</button>
+      </div>
+    </header>
+    <div id="botError" class="alert hidden"></div>
+    <div class="console">
+      <div class="console-bar"><span>Console</span><button id="btnClear" class="btn small ghost">Clear</button></div>
+      <div id="logBox" class="logs" tabindex="0"></div>
+      <div class="chat row gap">
+        <input id="chatInput" type="text" maxlength="256" placeholder="Send a chat message (online bots only)" autocomplete="off">
+        <button id="btnSend" class="btn primary">Send</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="viewForm" class="view hidden">
+    <h2 id="formTitle">Add bot</h2>
+    <form id="botForm" autocomplete="off">
+      <input type="hidden" id="fId">
+      <label>Name<input id="fName" maxlength="40" required></label>
+      <div class="grid2">
+        <label>Server address<input id="fHost" placeholder="play.example.com" required></label>
+        <label>Port<input id="fPort" type="number" min="1" max="65535" value="25565" required></label>
+      </div>
+      <div class="grid2">
+        <label>Authentication
+          <select id="fAuth"><option value="offline">Offline (cracked / LAN)</option><option value="microsoft">Microsoft account</option></select>
+        </label>
+        <label><span id="fUserLabel">Username</span><input id="fUser" maxlength="100" required></label>
+      </div>
+      <div class="grid2">
+        <label>Minecraft version<input id="fVersion" placeholder="empty = auto-detect (e.g. 1.20.4)"></label>
+        <label>Reconnect delay (seconds)<input id="fDelay" type="number" min="1" max="3600" value="10"></label>
+      </div>
+      <label class="check"><input id="fReconnect" type="checkbox" checked> Reconnect automatically</label>
+      <p id="msaHint" class="muted hidden">Microsoft sign-in: start the bot and follow the device-code instructions shown in its console. The login is cached locally.</p>
+      <div id="formError" class="alert hidden"></div>
+      <div class="row gap">
+        <button type="submit" class="btn primary">Save</button>
+        <button type="button" id="btnCancel" class="btn ghost">Cancel</button>
+        <span class="spacer"></span>
+        <button type="button" id="btnDelete" class="btn danger hidden">Delete bot</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="viewCloud" class="view hidden">
+    <h2>Cloud &amp; pairing</h2>
+    <div class="card">
+      <h3>Cloud server</h3>
+      <label>Server URL<input id="cUrl" placeholder="https://bot-remote-cloud.onrender.com"></label>
+      <label>Registration key <span class="muted">(only if your server requires one)</span><input id="cKey" type="password" autocomplete="off"></label>
+      <div class="row gap">
+        <button id="btnConnect" class="btn primary">Save &amp; connect</button>
+        <button id="btnDisconnect" class="btn">Disconnect</button>
+        <button id="btnReset" class="btn ghost" title="Forget this PC's registration on the cloud">Reset registration</button>
+      </div>
+      <p>Status: <span id="cloudBadge" class="badge"></span> <span id="cloudMsg" class="muted"></span></p>
+      <label class="check"><input id="cAuto" type="checkbox"> Connect automatically on start</label>
+      <label class="check"><input id="cLogin" type="checkbox"> Start with Windows (minimized to tray)</label>
+    </div>
+    <div class="card">
+      <h3>Pair an iPhone</h3>
+      <p class="muted">Open Bot Remote on the iPhone → Settings → Scan QR. The code is single-use and expires after 5 minutes.</p>
+      <button id="btnPair" class="btn primary">Generate QR code</button>
+      <div id="qrBox" class="qr hidden"><img id="qrImg" alt="Pairing QR code" width="260" height="260"><div><div class="muted" id="qrInfo"></div><label>Pairing text (for manual entry)<input id="qrText" readonly></label></div></div>
+    </div>
+    <div class="card">
+      <h3>Paired devices</h3>
+      <ul id="phoneList" class="plist"></ul>
+    </div>
+  </section>
+</main>
+<script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# Render Blueprint for the Bot Remote cloud relay.
+# Deploy: Render dashboard -> New -> Blueprint -> select this repo (root directory is read from rootDir below).
+services:
+  - type: web
+    name: bot-remote-cloud
+    runtime: node
+    rootDir: cloud
+    plan: starter            # "free" web services spin down when idle and would drop your bot connections
+    region: frankfurt        # choose the region closest to you
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: TOKEN_PEPPER
+        generateValue: true  # random 256-bit value, generated once and kept by Render
+      - key: REGISTRATION_KEY
+        sync: false          # optional: set in the dashboard to restrict desktop registration
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bot-remote-db
+          property: connectionString
+
+databases:
+  - name: bot-remote-db
+    plan: basic-256mb        # Render's free Postgres expires after 30 days; use a paid plan or an external DB (see README)
+    region: frankfurt
+    databaseName: botremote
+    user: botremote

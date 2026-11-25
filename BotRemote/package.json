@@ -1,0 +1,12 @@
+{
+  "name": "bot-remote",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Bot Remote monorepo helper scripts",
+  "scripts": {
+    "install:all": "npm --prefix cloud install && npm --prefix desktop install",
+    "check:protocol": "node scripts/check-protocol.js",
+    "test": "node scripts/check-protocol.js && npm --prefix cloud test && npm --prefix desktop test"
+  }
+}

@@ -1,0 +1,45 @@
+
+workflows:
+  botremote-ios:
+    name: Bot Remote iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      xcode: latest
+      vars:
+        BUNDLE_ID: com.botremote.app
+        APP_NAME: BotRemote
+
+    scripts:
+      - name: Generate Xcode project
+        script: |
+          brew install xcodegen
+          cd ios
+          xcodegen generate
+
+      - name: Build unsigned IPA
+        script: |
+          cd ios
+          xcodebuild \
+            -project BotRemote.xcodeproj \
+            -scheme BotRemote \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package IPA
+        script: |
+          APP_PATH="ios/build/Build/Products/Release-iphoneos/BotRemote.app"
+          mkdir -p "$CM_BUILD_DIR/Payload"
+          cp -R "$APP_PATH" "$CM_BUILD_DIR/Payload/"
+          cd "$CM_BUILD_DIR"
+          zip -r BotRemote-unsigned.ipa Payload
+
+    artifacts:
+      - BotRemote-unsigned.ipa
+      - ios/build/Build/Products/Release-iphoneos/*.app

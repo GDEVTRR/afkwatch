@@ -42,6 +42,7 @@ targets:
     sources:
       - path: BotRemoteLiveActivity
         excludes:
+          - Info.plist
           - "*.entitlements"
     settings:
       base:
@@ -52,7 +53,6 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundlePackageType: "XPC!"
-        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: BotRemoteLiveActivity/Info.plist
         CODE_SIGN_ENTITLEMENTS: BotRemoteLiveActivity/BotRemoteLiveActivity.entitlements

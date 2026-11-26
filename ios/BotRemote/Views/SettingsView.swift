@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 
 struct SettingsView: View {
     @EnvironmentObject var store: RemoteStore
@@ -8,8 +9,12 @@ struct SettingsView: View {
     @State private var manualText = ""
     @State private var pending: PairingPayload?
     @State private var confirmUnpair = false
+    @State private var biometricError: String?
+    @State private var checkingBiometrics = false
+
     @AppStorage("appearance") private var appearance = "light"
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
+    @AppStorage("biometricLockEnabled") private var biometricLockEnabled = false
 
     var body: some View {
         NavigationStack {
@@ -42,11 +47,20 @@ struct SettingsView: View {
 
                 Section("Cihaz eşleştirme") {
                     if store.isPaired {
-                        Button("Yeniden bağlan") { store.disconnectSocket(); store.connect() }
-                        Button("Bu cihazın bağlantısını kes", role: .destructive) { confirmUnpair = true }
+                        Button("Yeniden bağlan") {
+                            store.disconnectSocket()
+                            store.connect()
+                        }
+                        Button("Bu cihazın bağlantısını kes", role: .destructive) {
+                            confirmUnpair = true
+                        }
                     } else {
-                        Button { showScanner = true } label: { Label("Eşleştirme QR kodunu okut", systemImage: "qrcode.viewfinder") }
-                        Button { showManual = true } label: { Label("Eşleştirme metnini gir", systemImage: "keyboard") }
+                        Button { showScanner = true } label: {
+                            Label("Eşleştirme QR kodunu okut", systemImage: "qrcode.viewfinder")
+                        }
+                        Button { showManual = true } label: {
+                            Label("Eşleştirme metnini gir", systemImage: "keyboard")
+                        }
                     }
                     if store.busy { ProgressView() }
                 }
@@ -59,13 +73,45 @@ struct SettingsView: View {
                     }
                 }
 
+                Section {
+                    Toggle("\(biometryName) ile kilitle", isOn: Binding(
+                        get: { biometricLockEnabled },
+                        set: { setBiometricLock($0) }
+                    ))
+                    .disabled(checkingBiometrics)
+
+                    if checkingBiometrics {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Kimlik doğrulanıyor…")
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                        }
+                    }
+
+                    if let biometricError {
+                        Text(biometricError)
+                            .font(.caption)
+                            .foregroundStyle(Theme.err)
+                    } else {
+                        Text("Açıldığında veya uygulamaya geri döndüğünde Face ID / Touch ID ya da cihaz parolası istenir.")
+                            .font(.caption)
+                            .foregroundStyle(Theme.muted)
+                    }
+                } header: {
+                    Text("Güvenlik")
+                }
+
                 Section("Bildirimler") {
                     Toggle("Bot durum bildirimleri", isOn: $notificationsEnabled)
                         .onChange(of: notificationsEnabled) { enabled in
-                            if enabled { Task { _ = await NotificationService.shared.requestPermission() } }
+                            if enabled {
+                                Task { _ = await NotificationService.shared.requestPermission() }
+                            }
                         }
                     Text("Bot aktif olduğunda veya bağlantısı kesildiğinde bildirim alırsın.")
-                        .font(.caption).foregroundStyle(Theme.muted)
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
                 }
 
                 Section("Kestirmeler ve Siri") {
@@ -73,12 +119,21 @@ struct SettingsView: View {
                     Label("“Botları durdur”", systemImage: "stop.fill")
                     Label("“Botları yenile”", systemImage: "arrow.clockwise")
                     Text("Komutları Siri'ye söyleyebilir veya Kestirmeler uygulamasına ekleyebilirsin.")
-                        .font(.caption).foregroundStyle(Theme.muted)
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
                 }
 
                 Section("Hakkında") {
-                    HStack { Text("En fazla bot"); Spacer(); Text("\(store.maxActive)").foregroundColor(Theme.muted) }
-                    HStack { Text("Sürüm"); Spacer(); Text("1.1.0").foregroundColor(Theme.muted) }
+                    HStack {
+                        Text("En fazla bot")
+                        Spacer()
+                        Text("\(store.maxActive)").foregroundColor(Theme.muted)
+                    }
+                    HStack {
+                        Text("Sürüm")
+                        Spacer()
+                        Text("1.2.0").foregroundColor(Theme.muted)
+                    }
                 }
             }
             .scrollContentBackground(.hidden)
@@ -90,17 +145,23 @@ struct SettingsView: View {
             .sheet(isPresented: $showScanner) { scannerSheet }
             .sheet(isPresented: $showManual) { manualSheet }
             .alert("Bu sunucu eşleştirilsin mi?", isPresented: Binding(
-                get: { pending != nil }, set: { if !$0 { pending = nil } })) {
+                get: { pending != nil },
+                set: { if !$0 { pending = nil } }
+            )) {
                 Button("İptal", role: .cancel) { pending = nil }
                 Button("Eşleştir") {
-                    if let p = pending { Task { await store.pair(with: p) } }
+                    if let payload = pending {
+                        Task { await store.pair(with: payload) }
+                    }
                     pending = nil
                 }
             } message: {
                 Text(pending.map { "iPhone şu bilgisayara bağlanacak:\n\($0.u)" } ?? "")
             }
             .confirmationDialog("Cihaz bağlantısı kesilsin mi?", isPresented: $confirmUnpair, titleVisibility: .visible) {
-                Button("Bağlantıyı kes", role: .destructive) { Task { await store.unpair() } }
+                Button("Bağlantıyı kes", role: .destructive) {
+                    Task { await store.unpair() }
+                }
             } message: {
                 Text("Yeniden eşleştirene kadar bilgisayar bu iPhone’dan komut kabul etmeyecek.")
             }
@@ -115,6 +176,47 @@ struct SettingsView: View {
         }
     }
 
+    private var biometryName: String {
+        let context = LAContext()
+        var error: NSError?
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+        switch context.biometryType {
+        case .faceID: return "Face ID"
+        case .touchID: return "Touch ID"
+        default: return "Biyometrik kilit"
+        }
+    }
+
+    private func setBiometricLock(_ enabled: Bool) {
+        biometricError = nil
+        guard enabled else {
+            biometricLockEnabled = false
+            return
+        }
+
+        let context = LAContext()
+        var policyError: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &policyError) else {
+            biometricLockEnabled = false
+            biometricError = policyError?.localizedDescription ?? "Bu cihazda Face ID veya Touch ID kullanılamıyor."
+            return
+        }
+
+        checkingBiometrics = true
+        context.evaluatePolicy(
+            .deviceOwnerAuthenticationWithBiometrics,
+            localizedReason: "Bot Remote uygulamasını kilitlemek için kimliğini doğrula."
+        ) { success, error in
+            DispatchQueue.main.async {
+                checkingBiometrics = false
+                biometricLockEnabled = success
+                if !success {
+                    biometricError = error?.localizedDescription ?? "Kimlik doğrulaması tamamlanamadı."
+                }
+            }
+        }
+    }
+
     private var scannerSheet: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
@@ -124,11 +226,19 @@ struct SettingsView: View {
                 }
                 .ignoresSafeArea()
                 Text("Kamerayı masaüstü uygulamasındaki QR koduna tut.")
-                    .font(.footnote).padding(10).background(.ultraThinMaterial).clipShape(Capsule()).padding()
+                    .font(.footnote)
+                    .padding(10)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding()
             }
             .navigationTitle("QR kodu okut")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("İptal") { showScanner = false } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("İptal") { showScanner = false }
+                }
+            }
         }
     }
 
@@ -136,16 +246,26 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section(footer: Text("Masaüstü uygulamasında QR kodunun altında görünen metni yapıştır.")) {
-                    TextEditor(text: $manualText).frame(minHeight: 120)
+                    TextEditor(text: $manualText)
+                        .frame(minHeight: 120)
                         .font(.system(.footnote, design: .monospaced))
-                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
-                Button("Devam et") { showManual = false; handle(manualText); manualText = "" }
-                    .disabled(manualText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("Devam et") {
+                    showManual = false
+                    handle(manualText)
+                    manualText = ""
+                }
+                .disabled(manualText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .navigationTitle("Eşleştirme metni")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("İptal") { showManual = false } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("İptal") { showManual = false }
+                }
+            }
         }
     }
 
@@ -155,6 +275,6 @@ struct SettingsView: View {
             store.errorMessage = "Bu geçerli bir Bot Remote eşleştirme kodu değil."
             return
         }
-        pending = payload   // always ask the user to confirm the server before linking
+        pending = payload
     }
 }

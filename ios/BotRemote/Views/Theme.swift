@@ -31,26 +31,62 @@ extension Color {
 
 struct CardStyle: ViewModifier {
     func body(content: Content) -> some View {
-        content.padding(16)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Theme.line, lineWidth: 0.8))
-            .shadow(color: .black.opacity(0.045), radius: 14, y: 5)
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+
+        Group {
+            if #available(iOS 26.0, *) {
+                content
+                    .padding(16)
+                    .glassEffect(.regular, in: shape)
+                    .overlay(shape.stroke(.white.opacity(0.26), lineWidth: 0.8))
+            } else {
+                content
+                    .padding(16)
+                    .background(.regularMaterial, in: shape)
+                    .overlay(shape.stroke(Theme.line, lineWidth: 0.8))
+                    .shadow(color: .black.opacity(0.045), radius: 14, y: 5)
+            }
+        }
     }
 }
-extension View { func card() -> some View { modifier(CardStyle()) } }
+
+extension View {
+    func card() -> some View { modifier(CardStyle()) }
+}
 
 struct StatusPill: View {
     let status: BotStatus
+
+    private var title: String {
+        switch status {
+        case .online: return "Aktif"
+        case .connecting: return "Bağlanıyor"
+        case .reconnecting: return "Yeniden bağlanıyor"
+        case .stopped: return "Durduruldu"
+        }
+    }
+
     var body: some View {
-        Text(status == .online ? "Aktif" : status == .connecting ? "Bağlanıyor" :
-             status == .reconnecting ? "Yeniden bağlanıyor" : "Durduruldu")
+        Text(title)
             .font(.caption.weight(.semibold))
-            .padding(.horizontal, 11).padding(.vertical, 6)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 6)
             .foregroundStyle(Theme.color(for: status))
             .background(Theme.color(for: status).opacity(0.12), in: Capsule())
+            .modifier(StatusPillGlass())
     }
 }
+
+private struct StatusPillGlass: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content
+        }
+    }
+}
+
 func formatUptime(_ interval: TimeInterval) -> String {
     let s = max(0, Int(interval))
     return String(format: "%dh %02dm %02ds", s / 3600, (s % 3600) / 60, s % 60)

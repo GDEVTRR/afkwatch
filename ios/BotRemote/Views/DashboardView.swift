@@ -41,9 +41,7 @@ struct DashboardView: View {
             }
             .navigationTitle("Bot Remote")
             .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: String.self) { id in
-                BotDetailView(botId: id)
-            }
+            .navigationDestination(for: String.self) { id in BotDetailView(botId: id) }
             .toolbar {
                 if store.isPaired {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -75,16 +73,11 @@ struct DashboardView: View {
                 .frame(width: 48, height: 48)
                 .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
             VStack(alignment: .leading, spacing: 3) {
-                Text(store.desktopOnline ? "Masaüstü bağlı" : "Masaüstü çevrimdışı")
-                    .font(.headline)
-                Text(store.connection.label)
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
+                Text(store.desktopOnline ? "Masaüstü bağlı" : "Masaüstü çevrimdışı").font(.headline)
+                Text(store.connection.label).font(.caption).foregroundStyle(Theme.muted)
             }
             Spacer()
-            Circle()
-                .fill(store.desktopOnline ? Theme.ok : Theme.err)
-                .frame(width: 9, height: 9)
+            Circle().fill(store.desktopOnline ? Theme.ok : Theme.err).frame(width: 9, height: 9)
         }
         .padding(.vertical, 4)
     }
@@ -93,15 +86,12 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("AKTİF BOT")
-                        .font(.caption.weight(.bold))
-                        .tracking(1.2)
-                        .foregroundStyle(Theme.muted)
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text("AKTİF BOT").font(.caption.weight(.bold)).tracking(1.2).foregroundStyle(Theme.muted)
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text("\(store.activeCount)")
                             .font(.system(size: 54, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                        Text("/ \(store.maxActive)")
+                        Text(store.maxActive > 0 ? "/ \(store.maxActive)" : "Limitsiz")
                             .font(.title3.weight(.medium))
                             .foregroundStyle(Theme.muted)
                     }
@@ -111,13 +101,15 @@ struct DashboardView: View {
                     .font(.system(size: 34, weight: .medium))
                     .foregroundStyle(Theme.accent.opacity(0.8))
             }
-            ProgressView(value: Double(store.activeCount), total: Double(max(store.maxActive, 1)))
-                .tint(Theme.accent)
+            if store.maxActive > 0 {
+                ProgressView(value: Double(store.activeCount), total: Double(max(store.maxActive, 1)))
+                    .tint(Theme.accent)
+            }
             HStack {
                 Label("\(store.bots.filter { $0.statusKind == .online }.count) çevrimiçi", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(Theme.ok)
                 Spacer()
-                Text("En fazla \(store.maxActive) bot")
+                Text(store.maxActive > 0 ? "En fazla \(store.maxActive) bot" : "Sabit bot sınırı yok")
                     .foregroundStyle(Theme.muted)
             }
             .font(.caption.weight(.medium))
@@ -128,22 +120,17 @@ struct DashboardView: View {
 
 struct BotCard: View {
     let bot: BotInfo
-
     var body: some View {
         HStack(spacing: 13) {
             ServerIconView(bot: bot)
             VStack(alignment: .leading, spacing: 4) {
                 Text(bot.name).font(.headline)
                 Text("\(bot.username) · \(bot.address)")
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-                    .lineLimit(1)
+                    .font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
             }
             Spacer(minLength: 4)
             StatusPill(status: bot.statusKind)
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Theme.muted)
+            Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(Theme.muted)
         }
         .card()
     }
@@ -156,14 +143,9 @@ struct EmptyState: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(Theme.accent)
+            Image(systemName: icon).font(.system(size: 40, weight: .light)).foregroundStyle(Theme.accent)
             Text(title).font(.title3.weight(.semibold))
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(Theme.muted)
-                .multilineTextAlignment(.center)
+            Text(text).font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
         }
         .padding(28)
     }

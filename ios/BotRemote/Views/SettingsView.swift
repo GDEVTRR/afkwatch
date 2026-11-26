@@ -105,9 +105,7 @@ struct SettingsView: View {
                 Section("Bildirimler") {
                     Toggle("Bot durum bildirimleri", isOn: $notificationsEnabled)
                         .onChange(of: notificationsEnabled) { enabled in
-                            if enabled {
-                                Task { _ = await NotificationService.shared.requestPermission() }
-                            }
+                            if enabled { Task { _ = await NotificationService.shared.requestPermission() } }
                         }
                     Text("Bot aktif olduğunda veya bağlantısı kesildiğinde bildirim alırsın.")
                         .font(.caption)
@@ -125,9 +123,10 @@ struct SettingsView: View {
 
                 Section("Hakkında") {
                     HStack {
-                        Text("En fazla bot")
+                        Text("Aktif bot sınırı")
                         Spacer()
-                        Text("\(store.maxActive)").foregroundColor(Theme.muted)
+                        Text(store.maxActive > 0 ? "\(store.maxActive)" : "Limitsiz")
+                            .foregroundColor(Theme.muted)
                     }
                     HStack {
                         Text("Sürüm")
@@ -150,18 +149,14 @@ struct SettingsView: View {
             )) {
                 Button("İptal", role: .cancel) { pending = nil }
                 Button("Eşleştir") {
-                    if let payload = pending {
-                        Task { await store.pair(with: payload) }
-                    }
+                    if let payload = pending { Task { await store.pair(with: payload) } }
                     pending = nil
                 }
             } message: {
                 Text(pending.map { "iPhone şu bilgisayara bağlanacak:\n\($0.u)" } ?? "")
             }
             .confirmationDialog("Cihaz bağlantısı kesilsin mi?", isPresented: $confirmUnpair, titleVisibility: .visible) {
-                Button("Bağlantıyı kes", role: .destructive) {
-                    Task { await store.unpair() }
-                }
+                Button("Bağlantıyı kes", role: .destructive) { Task { await store.unpair() } }
             } message: {
                 Text("Yeniden eşleştirene kadar bilgisayar bu iPhone’dan komut kabul etmeyecek.")
             }
@@ -189,10 +184,7 @@ struct SettingsView: View {
 
     private func setBiometricLock(_ enabled: Bool) {
         biometricError = nil
-        guard enabled else {
-            biometricLockEnabled = false
-            return
-        }
+        guard enabled else { biometricLockEnabled = false; return }
 
         let context = LAContext()
         var policyError: NSError?
@@ -210,9 +202,7 @@ struct SettingsView: View {
             DispatchQueue.main.async {
                 checkingBiometrics = false
                 biometricLockEnabled = success
-                if !success {
-                    biometricError = error?.localizedDescription ?? "Kimlik doğrulaması tamamlanamadı."
-                }
+                if !success { biometricError = error?.localizedDescription ?? "Kimlik doğrulaması tamamlanamadı." }
             }
         }
     }
@@ -234,11 +224,7 @@ struct SettingsView: View {
             }
             .navigationTitle("QR kodu okut")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { showScanner = false }
-                }
-            }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("İptal") { showScanner = false } } }
         }
     }
 
@@ -261,11 +247,7 @@ struct SettingsView: View {
             }
             .navigationTitle("Eşleştirme metni")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("İptal") { showManual = false }
-                }
-            }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("İptal") { showManual = false } } }
         }
     }
 

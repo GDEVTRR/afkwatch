@@ -7,6 +7,8 @@ struct RootView: View {
         TabView {
             DashboardView()
                 .tabItem { Label("Botlar", systemImage: "square.grid.2x2.fill") }
+            GalleryView()
+                .tabItem { Label("Galeri", systemImage: "photo.on.rectangle.angled") }
             ConsoleTabView()
                 .tabItem { Label("Konsol", systemImage: "terminal") }
             SettingsView()

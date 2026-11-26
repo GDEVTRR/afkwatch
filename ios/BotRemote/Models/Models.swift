@@ -1,12 +1,12 @@
 import Foundation
 
-/// Wire models. Field names and event names MUST match cloud/services/protocol.js.
 enum Event {
     static let presence = "presence"
     static let snapshot = "bots:snapshot"
     static let status = "bot:status"
     static let log = "bot:log"
     static let chat = "bot:chat"
+    static let screenshot = "bot:screenshot"
     static let command = "command"
     static let revoked = "revoked"
 }
@@ -26,7 +26,7 @@ struct BotInfo: Codable, Identifiable, Equatable {
     var autoReconnect: Bool
     var reconnectDelaySec: Int
     var status: String
-    var connectedAt: Double?   // epoch milliseconds, nil unless online
+    var connectedAt: Double?
     var serverVersion: String
     var lastError: String
 
@@ -39,6 +39,7 @@ struct BotInfo: Codable, Identifiable, Equatable {
 struct Snapshot: Codable {
     var bots: [BotInfo]
     var activeCount: Int
+    /// Zero means unlimited (the PC's resources are the practical limit).
     var maxActive: Int
 }
 
@@ -49,8 +50,8 @@ struct StatusUpdate: Codable {
 
 struct LogEntry: Codable, Identifiable, Equatable {
     var id = UUID()
-    var t: Double      // epoch milliseconds
-    var k: String      // info | chat | error | system | out
+    var t: Double
+    var k: String
     var m: String
 
     enum CodingKeys: String, CodingKey { case t, k, m }
@@ -62,6 +63,50 @@ struct LogEvent: Codable {
     var entry: LogEntry
 }
 
+struct ScreenSlot: Codable, Identifiable, Equatable {
+    var slot: Int
+    var name: String
+    var itemName: String
+    var count: Int
+    var id: Int { slot }
+}
+
+struct ScreenWindow: Codable, Equatable {
+    var title: String
+    var type: String
+    var slots: [ScreenSlot]
+}
+
+struct ScreenScoreRow: Codable, Identifiable, Equatable {
+    var name: String
+    var value: Int
+    var id: String { "\(name)-\(value)" }
+}
+
+struct ScreenScoreboard: Codable, Equatable {
+    var title: String
+    var rows: [ScreenScoreRow]
+}
+
+struct BotScreenSnapshot: Codable, Identifiable, Equatable {
+    var capturedAt: Double
+    var botName: String
+    var username: String
+    var serverAddress: String
+    var status: String
+    var window: ScreenWindow?
+    var inventory: [ScreenSlot]
+    var scoreboard: ScreenScoreboard?
+
+    var id: String { "\(botName)-\(Int(capturedAt))" }
+    var date: Date { Date(timeIntervalSince1970: capturedAt / 1000) }
+}
+
+struct BotScreenshotEvent: Codable {
+    var botId: String
+    var screenshot: BotScreenSnapshot
+}
+
 struct LogsResponse: Codable {
     var botId: String
     var logs: [LogEntry]
@@ -69,8 +114,8 @@ struct LogsResponse: Codable {
 
 struct PairingPayload: Codable {
     var v: Int
-    var u: String   // cloud server origin
-    var c: String   // single-use pairing code
+    var u: String
+    var c: String
 }
 
 struct PairResponse: Codable {

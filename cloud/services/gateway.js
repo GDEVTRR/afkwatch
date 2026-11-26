@@ -1,45 +1,39 @@
 'use strict';
-const { EV, ID_RE, LIMITS, validateCommand, sanitizeSnapshot, sanitizeBot, sanitizeLog, fail } = require('./protocol');
+const { EV, ID_RE, validateCommand, sanitizeSnapshot, sanitizeBot, sanitizeLog, sanitizeScreenshot, fail } = require('./protocol');
 const { createBucket } = require('./security');
 
 const COMMAND_TIMEOUT_MS = 15000;
 const noop = () => {};
-const ackOf = (cb) => (typeof cb === 'function' ? cb : noop);
+const ackOf = (callback) => (typeof callback === 'function' ? callback : noop);
 const phonesRoom = (desktopId) => `phones:${desktopId}`;
 const phoneRoom = (phoneId) => `phone:${phoneId}`;
 
-/**
- * Socket.IO routing. Authentication happens in io.use() (handshake), every event payload is validated,
- * and phones can only ever reach the ONE desktop they were paired with.
- */
 function attachGateway(io, { store, security, pairing }) {
-  const desktops = new Map();   // desktopId -> socket (at most one live socket per desktop)
-  const snapshots = new Map();  // desktopId -> last sanitized snapshot (tiny; lets phones render instantly)
-
+  const desktops = new Map();
+  const snapshots = new Map();
   const phonesOnline = (id) => io.sockets.adapter.rooms.get(phonesRoom(id))?.size || 0;
   const pushPhonesOnline = (id) => desktops.get(id)?.emit(EV.PRESENCE, { phonesOnline: phonesOnline(id) });
 
-  // ---- Handshake authentication ------------------------------------------------------------
   io.use(async (socket, next) => {
     try {
-      const a = socket.handshake.auth || {};
-      if (typeof a.token !== 'string' || a.token.length < 20 || a.token.length > 128) return next(new Error('unauthorized'));
-      if (a.role === 'desktop') {
-        if (typeof a.deviceId !== 'string' || !/^[A-Za-z0-9_-]{8,64}$/.test(a.deviceId)) return next(new Error('unauthorized'));
-        const d = await store.getDesktop(a.deviceId);
-        if (!d || !security.safeEqual(d.tokenHash, security.hash(a.token))) return next(new Error('unauthorized'));
-        socket.data = { role: 'desktop', desktopId: d.id };
+      const auth = socket.handshake.auth || {};
+      if (typeof auth.token !== 'string' || auth.token.length < 20 || auth.token.length > 128) return next(new Error('unauthorized'));
+      if (auth.role === 'desktop') {
+        if (typeof auth.deviceId !== 'string' || !/^[A-Za-z0-9_-]{8,64}$/.test(auth.deviceId)) return next(new Error('unauthorized'));
+        const desktop = await store.getDesktop(auth.deviceId);
+        if (!desktop || !security.safeEqual(desktop.tokenHash, security.hash(auth.token))) return next(new Error('unauthorized'));
+        socket.data = { role: 'desktop', desktopId: desktop.id };
         return next();
       }
-      if (a.role === 'phone') {
-        const p = await store.getPhoneByTokenHash(security.hash(a.token));
-        if (!p) return next(new Error('unauthorized'));
-        socket.data = { role: 'phone', desktopId: p.desktopId, phoneId: p.id, phoneName: p.name };
+      if (auth.role === 'phone') {
+        const phone = await store.getPhoneByTokenHash(security.hash(auth.token));
+        if (!phone) return next(new Error('unauthorized'));
+        socket.data = { role: 'phone', desktopId: phone.desktopId, phoneId: phone.id, phoneName: phone.name };
         return next();
       }
       return next(new Error('unauthorized'));
-    } catch (e) {
-      console.error('[auth] error:', e.message);
+    } catch (error) {
+      console.error('[auth] error:', error.message);
       return next(new Error('server_error'));
     }
   });
@@ -48,76 +42,82 @@ function attachGateway(io, { store, security, pairing }) {
     const bucket = socket.data.role === 'desktop' ? createBucket(150, 400) : createBucket(10, 30);
     socket.use((packet, next) => {
       if (bucket.take()) return next();
-      const cb = packet[packet.length - 1];
-      if (typeof cb === 'function') cb(fail('RATE_LIMITED', 'Too many events'));
-      return undefined; // drop packet
+      const callback = packet[packet.length - 1];
+      if (typeof callback === 'function') callback(fail('RATE_LIMITED', 'Too many events'));
+      return undefined;
     });
-    socket.on('error', (e) => console.warn('[socket] error:', e && e.message));
-    if (socket.data.role === 'desktop') onDesktop(socket); else onPhone(socket);
+    socket.on('error', (error) => console.warn('[socket] error:', error && error.message));
+    if (socket.data.role === 'desktop') onDesktop(socket);
+    else onPhone(socket);
   });
 
-  // ---- Desktop -----------------------------------------------------------------------------
   function onDesktop(socket) {
     const { desktopId } = socket.data;
-    const prev = desktops.get(desktopId);
-    if (prev && prev.id !== socket.id) { prev.emit(EV.REPLACED); prev.disconnect(true); }
+    const previous = desktops.get(desktopId);
+    if (previous && previous.id !== socket.id) { previous.emit(EV.REPLACED); previous.disconnect(true); }
     desktops.set(desktopId, socket);
     socket.join(`desktop:${desktopId}`);
     io.to(phonesRoom(desktopId)).emit(EV.PRESENCE, { desktopOnline: true });
     socket.emit(EV.PRESENCE, { phonesOnline: phonesOnline(desktopId) });
 
-    socket.on(EV.D_PAIRING_CREATE, async (_p, cb) => {
-      try {
-        return ackOf(cb)({ ok: true, data: await pairing.createCode(desktopId) });
-      } catch (e) { console.error('[pairing]', e.message); return ackOf(cb)(fail('SERVER_ERROR', 'Could not create pairing code')); }
+    socket.on(EV.D_PAIRING_CREATE, async (_payload, callback) => {
+      try { ackOf(callback)({ ok: true, data: await pairing.createCode(desktopId) }); }
+      catch (error) { console.error('[pairing]', error.message); ackOf(callback)(fail('SERVER_ERROR', 'Could not create pairing code')); }
     });
 
-    socket.on(EV.D_PHONES_LIST, async (_p, cb) => {
+    socket.on(EV.D_PHONES_LIST, async (_payload, callback) => {
       try {
         const list = await store.listPhones(desktopId);
-        return ackOf(cb)({ ok: true, data: { phones: list.map((p) => ({
-          id: p.id, name: p.name, createdAt: p.createdAt, lastSeenAt: p.lastSeenAt,
-          online: Boolean(io.sockets.adapter.rooms.get(phoneRoom(p.id))?.size),
+        ackOf(callback)({ ok: true, data: { phones: list.map((phone) => ({
+          id: phone.id, name: phone.name, createdAt: phone.createdAt, lastSeenAt: phone.lastSeenAt,
+          online: Boolean(io.sockets.adapter.rooms.get(phoneRoom(phone.id))?.size),
         })) } });
-      } catch (e) { return ackOf(cb)(fail('SERVER_ERROR', 'Could not list phones')); }
+      } catch { ackOf(callback)(fail('SERVER_ERROR', 'Could not list phones')); }
     });
 
-    socket.on(EV.D_PHONES_REVOKE, async (p, cb) => {
+    socket.on(EV.D_PHONES_REVOKE, async (payload, callback) => {
       try {
-        if (!p || typeof p.phoneId !== 'string' || !ID_RE.test(p.phoneId)) return ackOf(cb)(fail('BAD_REQUEST', 'Invalid phoneId'));
-        const removed = await store.deletePhone(desktopId, p.phoneId);
-        if (!removed) return ackOf(cb)(fail('NOT_FOUND', 'Phone not found'));
-        gateway.revokePhone(desktopId, p.phoneId);
-        return ackOf(cb)({ ok: true });
-      } catch (e) { return ackOf(cb)(fail('SERVER_ERROR', 'Could not revoke phone')); }
+        if (!payload || typeof payload.phoneId !== 'string' || !ID_RE.test(payload.phoneId)) return ackOf(callback)(fail('BAD_REQUEST', 'Invalid phoneId'));
+        const removed = await store.deletePhone(desktopId, payload.phoneId);
+        if (!removed) return ackOf(callback)(fail('NOT_FOUND', 'Phone not found'));
+        gateway.revokePhone(desktopId, payload.phoneId);
+        return ackOf(callback)({ ok: true });
+      } catch { return ackOf(callback)(fail('SERVER_ERROR', 'Could not revoke phone')); }
     });
 
-    socket.on(EV.BOTS_SNAPSHOT, (p) => {
-      const s = sanitizeSnapshot(p);
-      if (!s) return;
-      snapshots.set(desktopId, s);
-      io.to(phonesRoom(desktopId)).emit(EV.BOTS_SNAPSHOT, s);
+    socket.on(EV.BOTS_SNAPSHOT, (payload) => {
+      const snapshot = sanitizeSnapshot(payload);
+      if (!snapshot) return;
+      snapshots.set(desktopId, snapshot);
+      io.to(phonesRoom(desktopId)).emit(EV.BOTS_SNAPSHOT, snapshot);
     });
 
-    socket.on(EV.BOT_STATUS, (p) => {
-      const bot = sanitizeBot(p && p.bot);
+    socket.on(EV.BOT_STATUS, (payload) => {
+      const bot = sanitizeBot(payload && payload.bot);
       if (!bot) return;
-      const snap = snapshots.get(desktopId);
-      if (snap) {
-        const i = snap.bots.findIndex((b) => b.id === bot.id);
-        if (i >= 0) snap.bots[i] = bot; else if (snap.bots.length < LIMITS.MAX_CONFIGURED_BOTS) snap.bots.push(bot);
-        snap.activeCount = snap.bots.filter((b) => b.status !== 'stopped').length;
+      const snapshot = snapshots.get(desktopId);
+      if (snapshot) {
+        const index = snapshot.bots.findIndex((entry) => entry.id === bot.id);
+        if (index >= 0) snapshot.bots[index] = bot;
+        else snapshot.bots.push(bot);
+        snapshot.activeCount = snapshot.bots.filter((entry) => entry.status !== 'stopped').length;
       }
-      io.to(phonesRoom(desktopId)).emit(EV.BOT_STATUS, { bot, activeCount: snap ? snap.activeCount : undefined });
+      io.to(phonesRoom(desktopId)).emit(EV.BOT_STATUS, { bot, activeCount: snapshot ? snapshot.activeCount : undefined });
     });
 
-    const relayEntry = (event) => (p) => {
-      if (!p || typeof p.botId !== 'string' || !ID_RE.test(p.botId)) return;
-      const entry = sanitizeLog(p.entry);
-      if (entry) io.to(phonesRoom(desktopId)).emit(event, { botId: p.botId, entry });
+    const relayEntry = (event) => (payload) => {
+      if (!payload || typeof payload.botId !== 'string' || !ID_RE.test(payload.botId)) return;
+      const entry = sanitizeLog(payload.entry);
+      if (entry) io.to(phonesRoom(desktopId)).emit(event, { botId: payload.botId, entry });
     };
     socket.on(EV.BOT_LOG, relayEntry(EV.BOT_LOG));
     socket.on(EV.BOT_CHAT, relayEntry(EV.BOT_CHAT));
+
+    // GUI snapshots are structured Mineflayer state. The cloud only relays them; it stores no screenshots.
+    socket.on(EV.BOT_SCREENSHOT, (payload) => {
+      const screenshot = sanitizeScreenshot(payload);
+      if (screenshot) io.to(phonesRoom(desktopId)).emit(EV.BOT_SCREENSHOT, screenshot);
+    });
 
     socket.on('disconnect', () => {
       if (desktops.get(desktopId) === socket) {
@@ -127,34 +127,32 @@ function attachGateway(io, { store, security, pairing }) {
     });
   }
 
-  // ---- Phone -------------------------------------------------------------------------------
   function onPhone(socket) {
     const { desktopId, phoneId } = socket.data;
     socket.join(phonesRoom(desktopId));
     socket.join(phoneRoom(phoneId));
     store.touchPhone(phoneId).catch(noop);
     socket.emit(EV.PRESENCE, { desktopOnline: desktops.has(desktopId) });
-    const snap = snapshots.get(desktopId);
-    if (snap) socket.emit(EV.BOTS_SNAPSHOT, snap);
+    const snapshot = snapshots.get(desktopId);
+    if (snapshot) socket.emit(EV.BOTS_SNAPSHOT, snapshot);
     pushPhonesOnline(desktopId);
     desktops.get(desktopId)?.emit(EV.PHONES_CHANGED);
 
-    socket.on(EV.COMMAND, (payload, cb) => {
-      const reply = ackOf(cb);
-      const v = validateCommand(payload);
-      if (!v.ok) return reply(v);
-      const desk = desktops.get(desktopId);
-      if (!desk) return reply(fail('DESKTOP_OFFLINE', 'Your PC is offline'));
-      return desk.timeout(COMMAND_TIMEOUT_MS).emit(EV.COMMAND, v.value, (e, res) => {
-        if (e) return reply(fail('TIMEOUT', 'The PC did not answer in time'));
-        return reply(res && typeof res === 'object' ? res : fail('BAD_RESPONSE', 'Invalid response from PC'));
+    socket.on(EV.COMMAND, (payload, callback) => {
+      const reply = ackOf(callback);
+      const validated = validateCommand(payload);
+      if (!validated.ok) return reply(validated);
+      const desktop = desktops.get(desktopId);
+      if (!desktop) return reply(fail('DESKTOP_OFFLINE', 'Your PC is offline'));
+      return desktop.timeout(COMMAND_TIMEOUT_MS).emit(EV.COMMAND, validated.value, (error, response) => {
+        if (error) return reply(fail('TIMEOUT', 'The PC did not answer in time'));
+        return reply(response && typeof response === 'object' ? response : fail('BAD_RESPONSE', 'Invalid response from PC'));
       });
     });
 
     socket.on('disconnect', () => { pushPhonesOnline(desktopId); desktops.get(desktopId)?.emit(EV.PHONES_CHANGED); });
   }
 
-  // ---- API used by HTTP routes / hooks -----------------------------------------------------
   const gateway = {
     notifyPaired(desktopId, phone) {
       desktops.get(desktopId)?.emit(EV.PAIRING_COMPLETED, { phoneId: phone.id, name: phone.name });

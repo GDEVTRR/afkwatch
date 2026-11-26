@@ -8,6 +8,8 @@ struct SettingsView: View {
     @State private var manualText = ""
     @State private var pending: PairingPayload?
     @State private var confirmUnpair = false
+    @AppStorage("appearance") private var appearance = "light"
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = true
 
     var body: some View {
         NavigationStack {
@@ -49,18 +51,45 @@ struct SettingsView: View {
                     if store.busy { ProgressView() }
                 }
 
+                Section("Görünüm") {
+                    Picker("Tema", selection: $appearance) {
+                        Text("Açık").tag("light")
+                        Text("Koyu").tag("dark")
+                        Text("Sistem").tag("system")
+                    }
+                }
+
+                Section("Bildirimler") {
+                    Toggle("Bot durum bildirimleri", isOn: $notificationsEnabled)
+                        .onChange(of: notificationsEnabled) { enabled in
+                            if enabled { Task { _ = await NotificationService.shared.requestPermission() } }
+                        }
+                    Text("Bot aktif olduğunda veya bağlantısı kesildiğinde bildirim alırsın.")
+                        .font(.caption).foregroundStyle(Theme.muted)
+                }
+
+                Section("Kestirmeler ve Siri") {
+                    Label("“Botları başlat”", systemImage: "play.fill")
+                    Label("“Botları durdur”", systemImage: "stop.fill")
+                    Label("“Botları yenile”", systemImage: "arrow.clockwise")
+                    Text("Komutları Siri'ye söyleyebilir veya Kestirmeler uygulamasına ekleyebilirsin.")
+                        .font(.caption).foregroundStyle(Theme.muted)
+                }
+
                 Section("Hakkında") {
                     HStack { Text("En fazla bot"); Spacer(); Text("\(store.maxActive)").foregroundColor(Theme.muted) }
+                    HStack { Text("Sürüm"); Spacer(); Text("1.1.0").foregroundColor(Theme.muted) }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Ayarlar")
+            .tint(Theme.accent)
             .onAppear { urlText = store.serverURL }
             .onChange(of: store.serverURL) { urlText = $0 }
             .sheet(isPresented: $showScanner) { scannerSheet }
             .sheet(isPresented: $showManual) { manualSheet }
-            .alert("Pair with this server?", isPresented: Binding(
+            .alert("Bu sunucu eşleştirilsin mi?", isPresented: Binding(
                 get: { pending != nil }, set: { if !$0 { pending = nil } })) {
                 Button("İptal", role: .cancel) { pending = nil }
                 Button("Eşleştir") {
@@ -68,12 +97,12 @@ struct SettingsView: View {
                     pending = nil
                 }
             } message: {
-                Text(pending.map { "This will link your iPhone to the PC registered on:\n\($0.u)" } ?? "")
+                Text(pending.map { "iPhone şu bilgisayara bağlanacak:\n\($0.u)" } ?? "")
             }
-            .confirmationDialog("Disconnect this device?", isPresented: $confirmUnpair, titleVisibility: .visible) {
+            .confirmationDialog("Cihaz bağlantısı kesilsin mi?", isPresented: $confirmUnpair, titleVisibility: .visible) {
                 Button("Bağlantıyı kes", role: .destructive) { Task { await store.unpair() } }
             } message: {
-                Text("Your PC will no longer accept commands from this iPhone until you pair again.")
+                Text("Yeniden eşleştirene kadar bilgisayar bu iPhone’dan komut kabul etmeyecek.")
             }
         }
     }
@@ -94,7 +123,7 @@ struct SettingsView: View {
                     handle(code)
                 }
                 .ignoresSafeArea()
-                Text("Point the camera at the QR code in the desktop app")
+                Text("Kamerayı masaüstü uygulamasındaki QR koduna tut.")
                     .font(.footnote).padding(10).background(.ultraThinMaterial).clipShape(Capsule()).padding()
             }
             .navigationTitle("QR kodu okut")
@@ -106,7 +135,7 @@ struct SettingsView: View {
     private var manualSheet: some View {
         NavigationStack {
             Form {
-                Section(footer: Text("Paste the pairing text shown under the QR code in the desktop app.")) {
+                Section(footer: Text("Masaüstü uygulamasında QR kodunun altında görünen metni yapıştır.")) {
                     TextEditor(text: $manualText).frame(minHeight: 120)
                         .font(.system(.footnote, design: .monospaced))
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -114,7 +143,7 @@ struct SettingsView: View {
                 Button("Devam et") { showManual = false; handle(manualText); manualText = "" }
                     .disabled(manualText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .navigationTitle("Pairing text")
+            .navigationTitle("Eşleştirme metni")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("İptal") { showManual = false } } }
         }
@@ -123,7 +152,7 @@ struct SettingsView: View {
     private func handle(_ text: String) {
         guard let data = text.trimmingCharacters(in: .whitespacesAndNewlines).data(using: .utf8),
               let payload = try? JSONDecoder().decode(PairingPayload.self, from: data) else {
-            store.errorMessage = "This is not a Bot Remote pairing code."
+            store.errorMessage = "Bu geçerli bir Bot Remote eşleştirme kodu değil."
             return
         }
         pending = payload   // always ask the user to confirm the server before linking

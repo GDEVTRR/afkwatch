@@ -33,7 +33,7 @@ struct ConsoleView: View {
             }
 
             HStack(spacing: 8) {
-                TextField(canSend ? "Send chat message" : "Bot must be online to chat", text: $text)
+                TextField(canSend ? "Sohbete mesaj gönder" : "Mesaj göndermek için bot aktif olmalı", text: $text)
                     .textFieldStyle(.roundedBorder)
                     .submitLabel(.send)
                     .focused($focused)
@@ -51,7 +51,7 @@ struct ConsoleView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Temizle") { store.clearLogs(botId) }
+                Button("Kayıtları temizle") { store.clearLogs(botId) }
             }
         }
         .task { await store.loadLogs(botId) }

@@ -14,10 +14,10 @@ struct BotDetailView: View {
                     VStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack { StatusPill(status: bot.statusKind); Spacer() }
-                            row("Username", bot.username)
-                            row("Server", bot.address)
-                            row("Auth", bot.auth == "microsoft" ? "Microsoft" : "Offline")
-                            row("Version", bot.serverVersion.isEmpty ? (bot.version.isEmpty ? "Auto" : bot.version) : bot.serverVersion)
+                            row("Kullanıcı adı", bot.username)
+                            row("Sunucu", bot.address)
+                            row("Kimlik doğrulama", bot.auth == "microsoft" ? "Microsoft" : "Çevrimdışı")
+                            row("Sürüm", bot.serverVersion.isEmpty ? (bot.version.isEmpty ? "Auto" : bot.version) : bot.serverVersion)
                             HStack {
                                 Text("Çalışma süresi").foregroundColor(Theme.muted)
                                 Spacer()

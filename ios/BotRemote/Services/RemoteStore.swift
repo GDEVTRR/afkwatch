@@ -162,6 +162,7 @@ final class RemoteStore: ObservableObject {
                 guard let self, self.wantConnected else { return }
                 self.connection = .connecting
                 self.desktopOnline = false
+                Task { await self.updateLiveActivity() }
                 self.scheduleRetry()
             }
         }

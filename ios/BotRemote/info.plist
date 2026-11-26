@@ -22,8 +22,10 @@
     <string>1</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
-    <key>NSCameraUsageDescription</key>
+    <key>NSSupportsLiveActivities</key>\n    <true/>\n    <key>NSCameraUsageDescription</key>
     <string>QR kodunu taramak için kameraya erişim gerekiyor.</string>
+    <key>CFBundleURLTypes</key>
+    <array><dict><key>CFBundleURLSchemes</key><array><string>botremote</string></array></dict></array>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>
